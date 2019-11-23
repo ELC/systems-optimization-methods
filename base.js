@@ -133,6 +133,22 @@ function plot() {
     var iteration_text = `<span class="iteration" style="color: ${color}">Levenberg Marquard: </span>`;
     iteration_description += `${iteration_text} x=${x_value} y=${y_value} f(x)=${z_value} <br>`;
 
+    // Plot Guess Point
+    evaluate_point = {
+        'x': guess_x,
+        'y': guess_y
+    };
+
+    color = colors[3]
+
+    values = BFGS(fun, evaluate_point, alpha, iterations, color)
+    x_value = values[0]
+    y_value = values[1]
+    z_value = values[2]
+
+    var iteration_text = `<span class="iteration" style="color: ${color}">Broyden–Fletcher–Goldfarb–Shanno (BFGS): </span>`;
+    iteration_description += `${iteration_text} x=${x_value} y=${y_value} f(x)=${z_value} <br>`;
+
 
     var elapsed_time = 0;
     var end_calulation = performance.now();
@@ -147,6 +163,77 @@ function plot() {
     document.querySelector("#exec-time").innerHTML += `<span>Ploting Time: <strong>${elapsed_time}ms</strong> <br></span>`;
     elapsed_time = Number((end_ploting - start).toFixed(0));
     document.querySelector("#exec-time").innerHTML += `<span>Total Time: <strong>${elapsed_time}ms</strong> <br></span>`;
+}
+
+function BFGS(fun, evaluate_point, alpha, iterations, color){
+    var hessian = nerdamer.imatrix(2);
+    alpha = nerdamer(alpha);
+
+    var x_value;
+    var y_value;
+    var z_value;
+
+    for (var i = 0; i < iterations; i++) {
+        var iteration_alpha = 0.6;
+
+        guess_x = evaluate_point.x;
+        guess_y = evaluate_point.y;
+
+        var guess_point = [guess_x, guess_y];
+        var nabla = nabla_vector(fun, evaluate_point);
+
+        var new_point = nerdamer(`[${guess_x}, ${guess_y}] - ([${alpha.text()}, ${alpha.text()}] * ${nerdamer.invert(hessian).text()} * ${nabla.text()})`).text();
+
+        evaluate_point.x = nerdamer.matget(new_point, 0, 0).evaluate().text();
+        evaluate_point.y = nerdamer.matget(new_point, 1, 0).evaluate().text();
+
+        new_point = [evaluate_point.x, evaluate_point.y]
+
+        var delta = nerdamer(`matrix(${evaluate_point.x - guess_x}, ${evaluate_point.y - guess_y})`)
+
+        var new_nabla = nabla_vector(fun, evaluate_point);
+        var gamma = nerdamer(`${new_nabla.text()} - ${nabla.text()}`)
+
+        var delta_t = nerdamer.transpose(delta)
+        var gamma_t = nerdamer.transpose(gamma)
+
+        var second_term_num = nerdamer(`${gamma} * ${gamma_t}`)
+        var second_term_den = nerdamer(`matget(${gamma_t} * ${delta}, 0, 0)`)
+        var second_coeff_matrix = nerdamer(`invert(matrix([${second_term_den}, 0], [0, ${second_term_den}]))`)
+        var second_term = nerdamer(`${second_term_num} * ${second_coeff_matrix}`)
+
+        var third_term_num = nerdamer(`${hessian} * ${delta} * ${delta_t} * ${hessian}`)
+        var third_term_den = nerdamer(`matget(${delta_t} * ${hessian} * ${delta}, 0, 0)`)
+        var third_coeff_matrix = nerdamer(`invert(matrix([${third_term_den}, 0], [0, ${third_term_den}]))`)
+        var third_term = nerdamer(`${third_term_num} * ${third_coeff_matrix}`)
+
+        var hessian = nerdamer(`${hessian} + ${second_term} - ${third_term}`)
+
+
+        // Approximate to avoid floating point errors
+        value = nerdamer.matget(hessian, 0, 0).text()
+        hessian = nerdamer(`matset(${hessian}, 0, 0, ${value})`)
+        value = nerdamer.matget(hessian, 1, 0).text()
+        hessian = nerdamer(`matset(${hessian}, 1, 0, ${value})`)
+        value = nerdamer.matget(hessian, 0, 1).text()
+        hessian = nerdamer(`matset(${hessian}, 0, 1, ${value})`)
+        value = nerdamer.matget(hessian, 1, 1).text()
+        hessian = nerdamer(`matset(${hessian}, 1, 1, ${value})`)
+
+        var points = [guess_point, new_point];
+        parameters.data.push(create_points(points, color, iteration_alpha));
+
+        var segment = create_segment(points, color, iteration_alpha);
+        parameters.data.push(segment);
+
+        var x_value = Number(parseFloat(nerdamer(evaluate_point.x).evaluate().text()).toFixed(2));
+        var y_value = Number(parseFloat(nerdamer(evaluate_point.y).evaluate().text()).toFixed(2));
+        var z_value = Number(parseFloat(fun.evaluate(evaluate_point).text()).toFixed(2));
+
+    }
+
+    return [x_value, y_value, z_value]
+
 }
 
 function levenberg_marquardt_method(fun, evaluate_point, beta, iterations, color){
