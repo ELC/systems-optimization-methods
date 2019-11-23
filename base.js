@@ -199,7 +199,7 @@ function BFGS(fun, evaluate_point, alpha, iterations, color){
         var guess_point = [guess_x, guess_y];
         var nabla = nabla_vector(fun, evaluate_point);
 
-        var new_point = nerdamer(`[${guess_x}, ${guess_y}] - ([${alpha.text()}, ${alpha.text()}] * ${nerdamer.invert(hessian).text()} * ${nabla.text()})`).text();
+        var new_point = nerdamer(`[${guess_x}, ${guess_y}] - ([${alpha.text()}, ${alpha.text()}] * ${hessian} * ${nabla})`).text();
 
         evaluate_point.x = nerdamer.matget(new_point, 0, 0).evaluate().text();
         evaluate_point.y = nerdamer.matget(new_point, 1, 0).evaluate().text();
@@ -209,23 +209,19 @@ function BFGS(fun, evaluate_point, alpha, iterations, color){
         var delta = nerdamer(`matrix(${evaluate_point.x - guess_x}, ${evaluate_point.y - guess_y})`)
 
         var new_nabla = nabla_vector(fun, evaluate_point);
-        var gamma = nerdamer(`${new_nabla.text()} - ${nabla.text()}`)
+        var gamma = nerdamer(`${new_nabla} - ${nabla}`)
 
         var delta_t = nerdamer.transpose(delta)
         var gamma_t = nerdamer.transpose(gamma)
 
-        var second_term_num = nerdamer(`${gamma} * ${gamma_t}`)
-        var second_term_den = nerdamer(`matget(${gamma_t} * ${delta}, 0, 0)`)
-        var second_coeff_matrix = nerdamer(`invert(matrix([${second_term_den}, 0], [0, ${second_term_den}]))`)
-        var second_term = nerdamer(`${second_term_num} * ${second_coeff_matrix}`)
-
-        var third_term_num = nerdamer(`${hessian} * ${delta} * ${delta_t} * ${hessian}`)
-        var third_term_den = nerdamer(`matget(${delta_t} * ${hessian} * ${delta}, 0, 0)`)
-        var third_coeff_matrix = nerdamer(`invert(matrix([${third_term_den}, 0], [0, ${third_term_den}]))`)
-        var third_term = nerdamer(`${third_term_num} * ${third_coeff_matrix}`)
-
-        var hessian = nerdamer(`${hessian} + ${second_term} - ${third_term}`)
-
+        // Formula extracted from "Numerical Optimization" 2006 - Nocedal, Wright p136
+        
+        var gammat_t_delta = nerdamer(`matget(${gamma_t} * ${delta}, 0, 0)`)
+        var denominator = nerdamer(`matrix([1 / (${gammat_t_delta}), 0], [0, 1 / (${gammat_t_delta})])`)
+        var second_try = nerdamer(`imatrix(2) - (${denominator} * ${delta} * ${gamma_t})`)
+        var third_try = nerdamer(`imatrix(2) - (${denominator} * ${gamma} * ${delta_t})`)
+        var fourth_try = nerdamer(`${denominator} * ${delta} * ${delta_t}`)
+        var hessian = nerdamer(`(${second_try}) * ${hessian} * (${third_try}) + (${fourth_try})`)
 
         // Approximate to avoid floating point errors
         value = nerdamer.matget(hessian, 0, 0).text()
