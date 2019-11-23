@@ -109,6 +109,23 @@ function plot() {
 
     color = colors[1]
 
+    values = newton_method_with_alpha(fun, evaluate_point, alpha, iterations, color)
+    x_value = values[0]
+    y_value = values[1]
+    z_value = values[2]
+
+    var iteration_text = `<span class="iteration" style="color: ${color}">Newton with Alpha: </span>`;
+    iteration_description += `${iteration_text} x=${x_value} y=${y_value} f(x)=${z_value} <br>`;
+
+
+    // Plot Guess Point
+    evaluate_point = {
+        'x': guess_x,
+        'y': guess_y
+    };
+
+    color = colors[2]
+
     values = gradient_method(fun, evaluate_point, alpha, iterations, color)
     x_value = values[0]
     y_value = values[1]
@@ -123,7 +140,7 @@ function plot() {
         'y': guess_y
     };
 
-    color = colors[2]
+    color = colors[3]
 
     values = levenberg_marquardt_method(fun, evaluate_point, beta, iterations, color)
     x_value = values[0]
@@ -139,7 +156,7 @@ function plot() {
         'y': guess_y
     };
 
-    color = colors[3]
+    color = colors[4]
 
     values = BFGS(fun, evaluate_point, alpha, iterations, color)
     x_value = values[0]
@@ -313,6 +330,45 @@ function gradient_method(fun, evaluate_point, alpha, iterations, color){
         var nabla = nabla_vector(fun, evaluate_point);
 
         var new_point = nerdamer(`[${guess_x}, ${guess_y}] - ([${alpha.text()}, ${alpha.text()}] * ${nabla.text()})`);
+        evaluate_point.x = nerdamer.matget(new_point, 0, 0).evaluate().text();
+        evaluate_point.y = nerdamer.matget(new_point, 1, 0).evaluate().text();
+
+        new_point = [evaluate_point.x, evaluate_point.y];
+
+        var points = [guess_point, new_point];
+        parameters.data.push(create_points(points, color, iteration_alpha));
+
+        var segment = create_segment(points, color, iteration_alpha);
+        parameters.data.push(segment);
+
+        x_value = Number(parseFloat(evaluate_point.x).toFixed(2));
+        y_value = Number(parseFloat(evaluate_point.y).toFixed(2));
+        z_value = Number(parseFloat(fun.evaluate(evaluate_point).text()).toFixed(2));
+    }
+
+    return [x_value, y_value, z_value]
+}
+
+function newton_method_with_alpha(fun, evaluate_point, alpha, iterations, color){
+
+    alpha = nerdamer(alpha);
+
+    var x_value;
+    var y_value;
+    var z_value;
+
+    for (var i = 0; i < iterations; i++) {
+        var iteration_alpha = 0.6;
+
+        guess_x = evaluate_point.x;
+        guess_y = evaluate_point.y;
+
+        var guess_point = [guess_x, guess_y];
+
+        var hessian = hessian_matrix(fun, evaluate_point);
+        var nabla = nabla_vector(fun, evaluate_point);
+
+        var new_point = nerdamer(`[${guess_x}, ${guess_y}] - ([${alpha.text()}, ${alpha.text()}] * ${nerdamer.invert(hessian).text()} * ${nabla.text()})`).text();
         evaluate_point.x = nerdamer.matget(new_point, 0, 0).evaluate().text();
         evaluate_point.y = nerdamer.matget(new_point, 1, 0).evaluate().text();
 
