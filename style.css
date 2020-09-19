@@ -145,8 +145,10 @@ label {
     margin-left: 0;
     margin-right: 0;
     text-align: center;
-    font-size: 10pt;
     padding: 0px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .function-option {
